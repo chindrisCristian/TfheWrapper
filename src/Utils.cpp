@@ -52,11 +52,27 @@ void Utils::PartialMultiplication(LweSample** const& result, const LweSample* co
     LweSample* temp = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
     Utils::AndOperation(result[threadId], a + threadId, bCopy + bitNumber - threadId, bitNumber, cloudKey);
     Utils::AndOperation(result[bitNumber - threadId - 1], a + bitNumber - threadId - 1, bCopy + threadId + 1, bitNumber, cloudKey);
-    int i, step;
-    for(step = 1, i = 0; step < bitNumber; step *= 2, i++){
+    int step;
+
+    /*mtx.lock();
+    cout << threadId << ": ";
+    Decrypt(result[threadId], bitNumber);
+    cout << bitNumber - threadId - 1 << ": ";
+    Decrypt(result[bitNumber - threadId - 1], bitNumber);
+    cout << endl;
+    mtx.unlock();*/
+
+    for(step = 1; step < bitNumber; step *= 2){
         if((threadId * step < bitNumber / 2) && (threadId < bitNumber / step - threadId - 1)){
-                Utils::FullAdderCircuit(temp, result[threadId], result[bitNumber / step - threadId - 1], bitNumber, cloudKey);
-                Utils::CipherCopy(result[threadId], temp, bitNumber, cloudKey);
+                Utils::FullAdderCircuit(temp, result[threadId] + bitNumber / step - threadId - 1, result[bitNumber / step - threadId - 1] + bitNumber / step - threadId - 1, bitNumber - bitNumber / step + threadId + 1, cloudKey);
+                Utils::CipherCopy(result[threadId] + bitNumber / step - threadId - 1, temp, bitNumber - bitNumber / step + threadId + 1, cloudKey);
+
+                /*mtx.lock();
+                cout << threadId << " " << step << ": ";
+                Decrypt(result[threadId], bitNumber);
+                cout << endl;
+                mtx.unlock();*/
+
         }
         syncBarr.wait();
     }
@@ -105,7 +121,9 @@ int Utils::Decrypt(const LweSample* const& c, int bitnr){
     int ai;
     for(int i = 0; i < bitnr; i++){
         ai = bootsSymDecrypt(c + i, KeyManager::GetInstance().GetSecretKey());
+        cout << ai << " ";
         out |= (ai << i);
     }
+    cout << endl;
     return out;
 }

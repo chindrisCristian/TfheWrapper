@@ -18,6 +18,18 @@ void GetInput(const char* const& fileName, int* const& a, int* const& b, int& n)
 }
 
 int main(int argc, char** argv) {
+    KeyManager& km = KeyManager::GetInstance();
+    if(km.ImportSecretKey("../key.secret"))
+        return 1;
+    Ciphertext c1(32, km.GetCloudKey()), c2(32, km.GetCloudKey());
+    uint32_t value_dec;
+    int a = atoi(argv[1]);
+    int b = atoi(argv[2]);
+    c1.Encrypt(a, km.GetSecretKey());
+    c2.Encrypt(b, km.GetSecretKey());
+    Ciphertext product = c1 * c2;
+    value_dec = product.Decrypt(km.GetSecretKey());
+    cout << value_dec << endl;
     /*int a[1000], b[1000], n;
     GetInput(argv[1], a, b, n);
     KeyManager& km = KeyManager::GetInstance();
@@ -47,7 +59,7 @@ int main(int argc, char** argv) {
     }
     fout.close();
     fout2.close();*/
-    ifstream fin(argv[1]), fin2(argv[2]);
+    /*ifstream fin(argv[1]), fin2(argv[2]);
     int n;
     fin >> n;
     int a, b;
@@ -58,7 +70,7 @@ int main(int argc, char** argv) {
             cout << "Eroare la linia " << i + 2;
             break;
         }
-    }
+    }*/
 
     return 0;
 }
