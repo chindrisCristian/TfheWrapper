@@ -56,13 +56,6 @@ Ciphertext Ciphertext::operator+(const Ciphertext& obj)
     return result;
 }
 
-Ciphertext Ciphertext::operator*(const Ciphertext& obj)
-{
-    Ciphertext result(obj._arraySize, obj._cloudKey, true);
-    Utils::MultiplicationCircuit(result._encData, this->_encData, obj._encData, 32, this->_cloudKey);
-    return result;
-}
-
 Ciphertext Ciphertext::operator+=(const Ciphertext& obj)
 {
     LweSample* result = new_gate_bootstrapping_ciphertext_array(32, this->_cloudKey->params);
@@ -70,6 +63,13 @@ Ciphertext Ciphertext::operator+=(const Ciphertext& obj)
     delete_gate_bootstrapping_ciphertext_array(32, this->_encData);
     this->_encData = result;
     return *this;
+}
+
+Ciphertext Ciphertext::operator*(const Ciphertext& obj)
+{
+    Ciphertext result(obj._arraySize, obj._cloudKey, true);
+    Utils::MultiplicationCircuit(result._encData, this->_encData, obj._encData, 32, this->_cloudKey);
+    return result;
 }
 
 #pragma endregion

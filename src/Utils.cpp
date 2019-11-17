@@ -2,12 +2,43 @@
 
 #include <boost/thread.hpp>
 
+#pragma region For debugging...
+
+/*
 #include <iostream>
 #include <KeyManager.hpp>
 
 boost::mutex mtx;
 
 using namespace std;
+
+mtx.lock();
+cout << threadId << ": ";
+Decrypt(result[threadId], bitNumber);
+cout << bitNumber - threadId - 1 << ": ";
+Decrypt(result[bitNumber - threadId - 1], bitNumber);
+cout << endl;
+mtx.unlock();
+
+/*mtx.lock();
+cout << threadId << " " << step << ": ";
+Decrypt(result[threadId], bitNumber);
+cout << endl;
+mtx.unlock();
+
+int Decrypt(const LweSample* const& c, int bitnr){
+    uint32_t out = 0;
+    int ai;
+    for(int i = 0; i < bitnr; i++){
+        ai = bootsSymDecrypt(c + i, KeyManager::GetInstance().GetSecretKey());
+        cout << ai << " ";
+        out |= (ai << i);
+    }
+    cout << endl;
+    return out;
+}*/
+
+#pragma endregion
 
 #pragma region Addition circuit 
 
@@ -38,59 +69,38 @@ void Utils::FullAdderCircuit(LweSample* const& result, const LweSample* const& a
 
 #pragma region Multiplication circuit
 
-void Utils::AndOperation(LweSample* const& result, const LweSample* const& ai, const LweSample* const& b, const int& bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
-    for(int i = 0; i < bitNumber; i++)
-        bootsAND(result + i, ai, b + i, cloudKey);
-}
-
-void Utils::PartialMultiplication(LweSample** const& result, const LweSample* const& a, const LweSample* const& bCopy, const TFheGateBootstrappingCloudKeySet* const& cloudKey, const int& threadId, const int& bitNumber, boost::barrier& syncBarr){
+void Utils::PartialMultiplication(LweSample** const& result, const LweSample* const& a, const LweSample* const& b, const TFheGateBootstrappingCloudKeySet* const& cloudKey, const int& threadId, const int& bitNumber, boost::barrier& syncBarr){
     // Create the partial results.
     if(threadId)
-        result[threadId] = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
-    result[bitNumber - threadId - 1] = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
+        result[threadId] = new_gate_bootstrapping_ciphertext_array(bitNumber - threadId, cloudKey->params);
+    result[bitNumber - threadId - 1] = new_gate_bootstrapping_ciphertext_array(threadId + 1, cloudKey->params);
     // Initiliaze the AND operations.
     LweSample* temp = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
-    Utils::AndOperation(result[threadId], a + threadId, bCopy + bitNumber - threadId, bitNumber, cloudKey);
-    Utils::AndOperation(result[bitNumber - threadId - 1], a + bitNumber - threadId - 1, bCopy + threadId + 1, bitNumber, cloudKey);
-    int step;
-
-    /*mtx.lock();
-    cout << threadId << ": ";
-    Decrypt(result[threadId], bitNumber);
-    cout << bitNumber - threadId - 1 << ": ";
-    Decrypt(result[bitNumber - threadId - 1], bitNumber);
-    cout << endl;
-    mtx.unlock();*/
-
-    for(step = 1; step < bitNumber; step *= 2){
+    Utils::BitAND(result[threadId], a + threadId, b, bitNumber - threadId, cloudKey);
+    Utils::BitAND(result[bitNumber - threadId - 1], a + bitNumber - threadId - 1, b, threadId + 1, cloudKey);
+    // Compute the successive sums.
+    for(int step = 1; step < bitNumber; step *= 2){
         if((threadId * step < bitNumber / 2) && (threadId < bitNumber / step - threadId - 1)){
-                Utils::FullAdderCircuit(temp, result[threadId] + bitNumber / step - threadId - 1, result[bitNumber / step - threadId - 1] + bitNumber / step - threadId - 1, bitNumber - bitNumber / step + threadId + 1, cloudKey);
-                Utils::CipherCopy(result[threadId] + bitNumber / step - threadId - 1, temp, bitNumber - bitNumber / step + threadId + 1, cloudKey);
-
-                /*mtx.lock();
-                cout << threadId << " " << step << ": ";
-                Decrypt(result[threadId], bitNumber);
-                cout << endl;
-                mtx.unlock();*/
-
+                Utils::FullAdderCircuit(temp, result[threadId] + (bitNumber / step) - (2 * threadId) - 1, result[bitNumber / step - threadId - 1], bitNumber - bitNumber / step + threadId + 1, cloudKey);
+                Utils::BitCopy(result[threadId] + (bitNumber / step) - (2 * threadId) - 1, temp, bitNumber - bitNumber / step + threadId + 1, cloudKey);
         }
         syncBarr.wait();
     }
     // Cleanup.
     delete_gate_bootstrapping_ciphertext_array(bitNumber, temp);
     if(threadId)
-        delete_gate_bootstrapping_ciphertext_array(bitNumber, result[threadId]);
-    delete_gate_bootstrapping_ciphertext_array(bitNumber, result[bitNumber - threadId - 1]);
+        delete_gate_bootstrapping_ciphertext_array(bitNumber - threadId, result[threadId]);
+    delete_gate_bootstrapping_ciphertext_array(threadId + 1, result[bitNumber - threadId - 1]);
 }
 
 void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* const& a, const LweSample* const& b, int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
-    // Create a copy of b in a 2 * size(b) having MSBs bit number 0
+    /*// Create a copy of b in a 2 * size(b) having MSBs bit number 0
     // and then the bits of b. 
     LweSample* bCopy = new_gate_bootstrapping_ciphertext_array(2 * bitNumber, cloudKey->params);
     for(int i = 0; i < bitNumber; i++)
         bootsCONSTANT(bCopy + i, 0, cloudKey);
     for(int i = bitNumber; i < 2 * bitNumber; i++)
-        bootsCOPY(bCopy + i, b - bitNumber + i, cloudKey);
+        bootsCOPY(bCopy + i, b - bitNumber + i, cloudKey);*/
     // Create the partial results.
     LweSample** partialResults = new LweSample*[bitNumber];
     partialResults[0] = result;
@@ -98,7 +108,7 @@ void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* con
     boost::barrier syncBarr(bitNumber / 2);
     for(int i = 0; i < bitNumber / 2; i++)
     {
-        threads[i] = boost::thread(Utils::PartialMultiplication, partialResults, a, bCopy, cloudKey, i, bitNumber, boost::ref(syncBarr));
+        threads[i] = boost::thread(Utils::PartialMultiplication, partialResults, a, b, cloudKey, i, bitNumber, boost::ref(syncBarr));
     }
 
     for(int i = 0; i < bitNumber / 2; i++)
@@ -106,24 +116,32 @@ void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* con
     
     // Cleanup.
     delete[] partialResults;
-    delete_gate_bootstrapping_ciphertext_array(2 * bitNumber, bCopy);
+    //delete_gate_bootstrapping_ciphertext_array(2 * bitNumber, bCopy);
 }
 
 #pragma endregion
 
-void Utils::CipherCopy(LweSample* const& destination, const LweSample* const& source, const int& bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
+#pragma region Comparison circuit
+
+/*void Utils::CompareBit(LweSample* const& ri, const LweSample* const& a, const LweSample* const& b, LweSample* const& rim, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
+    bootsXOR(rim + 1, a, b, cloudKey);
+    bootsMUX(ri, rim + 1, b, rim, cloudKey);
+}
+
+bool Utils::IsGreater(const LweSample* const& a, const LweSample* const& b, const int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
+    LweSample* result ==
+}*/
+
+#pragma endregion
+
+#pragma region Public methods
+void Utils::BitCopy(LweSample* const& destination, const LweSample* const& source, const int& bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
     for(int i = 0; i < bitNumber; i++)
         bootsCOPY(destination + i, source + i, cloudKey);
 }
 
-int Utils::Decrypt(const LweSample* const& c, int bitnr){
-    uint32_t out = 0;
-    int ai;
-    for(int i = 0; i < bitnr; i++){
-        ai = bootsSymDecrypt(c + i, KeyManager::GetInstance().GetSecretKey());
-        cout << ai << " ";
-        out |= (ai << i);
-    }
-    cout << endl;
-    return out;
+void Utils::BitAND(LweSample* const& result, const LweSample* const& ai, const LweSample* const& b, const int& bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
+    for(int i = 0; i < bitNumber; i++)
+        bootsAND(result + i, ai, b + i, cloudKey);
 }
+#pragma endregion

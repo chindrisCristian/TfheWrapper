@@ -15,12 +15,12 @@ public:
     void Encrypt(const uint32_t in, const TFheGateBootstrappingSecretKeySet* secretKey);
     uint32_t Decrypt(const TFheGateBootstrappingSecretKeySet* secretKey);
 
-    void SetAsTemporary(){
-        _isTemp = true;
-    }
-
     Ciphertext operator+(const Ciphertext& obj);
     Ciphertext operator+=(const Ciphertext& obj);
     Ciphertext operator*(const Ciphertext& obj);
 
+
+    void SetAsTemporary(){
+        _isTemp = true;
+    }
 };
