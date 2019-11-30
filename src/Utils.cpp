@@ -94,13 +94,6 @@ void Utils::PartialMultiplication(LweSample** const& result, const LweSample* co
 }
 
 void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* const& a, const LweSample* const& b, int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
-    /*// Create a copy of b in a 2 * size(b) having MSBs bit number 0
-    // and then the bits of b. 
-    LweSample* bCopy = new_gate_bootstrapping_ciphertext_array(2 * bitNumber, cloudKey->params);
-    for(int i = 0; i < bitNumber; i++)
-        bootsCONSTANT(bCopy + i, 0, cloudKey);
-    for(int i = bitNumber; i < 2 * bitNumber; i++)
-        bootsCOPY(bCopy + i, b - bitNumber + i, cloudKey);*/
     // Create the partial results.
     LweSample** partialResults = new LweSample*[bitNumber];
     partialResults[0] = result;
@@ -116,21 +109,11 @@ void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* con
     
     // Cleanup.
     delete[] partialResults;
-    //delete_gate_bootstrapping_ciphertext_array(2 * bitNumber, bCopy);
 }
 
 #pragma endregion
 
 #pragma region Comparison circuit
-
-/*void Utils::CompareBit(LweSample* const& ri, const LweSample* const& a, const LweSample* const& b, LweSample* const& rim, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
-    bootsXOR(rim + 1, a, b, cloudKey);
-    bootsMUX(ri, rim + 1, b, rim, cloudKey);
-}
-
-bool Utils::IsGreater(const LweSample* const& a, const LweSample* const& b, const int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
-    LweSample* result ==
-}*/
 
 #pragma endregion
 

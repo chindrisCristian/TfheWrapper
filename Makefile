@@ -1,12 +1,12 @@
 CXX		  := g++
-CXX_FLAGS := -w -std=c++17 -ggdb -lboost_thread
+CXX_FLAGS := -w -std=c++17 -O2
 
 BIN		:= bin
 SRC		:= src
 INCLUDE	:= include
 LIB		:= lib
 
-LIBRARIES	:=
+LIBRARIES	:= -lboost_thread -lpthread -lboost_system -ltfhe-spqlios-fma -lboost_chrono
 EXECUTABLE	:= main
 
 
@@ -17,7 +17,7 @@ run: clean all
 	./$(BIN)/$(EXECUTABLE)
 
 $(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
-	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES) -ltfhe-spqlios-fma
+	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
 
 clean:
 	-rm $(BIN)/*

@@ -1,17 +1,25 @@
 #pragma region Constructor and destructor
 template <typename T>
-Ciphertext<T>::Ciphertext(const TFheGateBootstrappingCloudKeySet* cloudKey, bool isTemp)
+Ciphertext<T>::Ciphertext(const TFheGateBootstrappingCloudKeySet* cloudKey)
 {
-    _isTemp = isTemp;
     _cloudKey = cloudKey;
     _arraySize = sizeof(T) * 8;
     _encData = new_gate_bootstrapping_ciphertext_array(_arraySize, _cloudKey->params);
 }
 
 template <typename T>
+Ciphertext<T>::Ciphertext(Ciphertext&& obj)
+{
+    this->_encData = obj._encData;
+    this->_arraySize = obj._arraySize;
+    this->_cloudKey = obj._cloudKey;
+    obj._encData = nullptr;
+}
+
+template <typename T>
 Ciphertext<T>::~Ciphertext()
 {
-    if(_encData != nullptr && !_isTemp)
+    if(_encData != nullptr)
     {
         delete_gate_bootstrapping_ciphertext_array(_arraySize, _encData);
         _encData = nullptr;
@@ -41,11 +49,32 @@ T Ciphertext<T>::Decrypt(const TFheGateBootstrappingSecretKeySet* secretKey){
 
 #pragma endregion
 
+#pragma region Write/ Read to/ from file
+template <typename T>
+int Ciphertext<T>::Export(FILE* file){
+    if(file == NULL)
+        return 1;
+    for(int i = 0; i < _arraySize; i++)
+        export_gate_bootstrapping_ciphertext_toFile(file, _encData + i, _cloudKey->params);
+    return 0;
+}
+
+template <typename T>
+int Ciphertext<T>::Import(FILE* file){
+    if(file == NULL)
+        return 1;
+    for(int i = 0; i < _arraySize; i++)
+        import_gate_bootstrapping_ciphertext_fromFile(file, _encData + i, _cloudKey->params);
+    return 0;
+}
+
+#pragma endregion
+
 #pragma region Operators overloading
 template <typename T>
 Ciphertext<T> Ciphertext<T>::operator+(const Ciphertext<T>& obj)
 {
-    Ciphertext<T> result(obj._cloudKey, true);
+    Ciphertext<T> result(obj._cloudKey);
     Utils::FullAdderCircuit(result._encData, this->_encData, obj._encData, this->_arraySize, this->_cloudKey);
     return result;
 }
@@ -63,9 +92,17 @@ Ciphertext<T> Ciphertext<T>::operator+=(const Ciphertext<T>& obj)
 template <typename T>
 Ciphertext<T> Ciphertext<T>::operator*(const Ciphertext<T>& obj)
 {
-    Ciphertext<T> result(obj._cloudKey, true);
+    Ciphertext<T> result(obj._cloudKey);
     Utils::MultiplicationCircuit(result._encData, this->_encData, obj._encData, this->_arraySize, this->_cloudKey);
     return result;
+}
+
+template <typename T>
+Ciphertext<T> Ciphertext<T>::operator=(Ciphertext<T>&& obj)
+{
+    delete_gate_bootstrapping_ciphertext_array(this->_arraySize, this->_encData);
+    this->_encData = obj._encData;
+    obj._encData = nullptr;
 }
 
 #pragma endregion
