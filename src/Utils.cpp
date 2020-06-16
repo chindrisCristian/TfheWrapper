@@ -113,6 +113,31 @@ void Utils::MultiplicationCircuit(LweSample* const& result, const LweSample* con
 
 #pragma endregion
 
+#pragma region Sequential multiplier
+void Utils::SequentialMultiplier(LweSample* const& result, const LweSample* const& a, const LweSample* const& b, int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey){
+    LweSample** partialResults = new LweSample*[3];
+    partialResults[0] = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
+    partialResults[1] = new_gate_bootstrapping_ciphertext_array(bitNumber, cloudKey->params);
+    partialResults[2] = new_gate_bootstrapping_ciphertext_array(2 * bitNumber, cloudKey->params);
+    for(int i = 0; i < bitNumber; i++){
+        bootsCONSTANT(result + i, 0, cloudKey);
+        bootsCOPY(partialResults[2] + bitNumber + i, b + i, cloudKey);
+        bootsCONSTANT(partialResults[2] + i, 0, cloudKey);
+    }
+    Utils::BitAND(partialResults[0], a, b, bitNumber, cloudKey);
+    for(int i = 1; i < bitNumber; i++){
+        Utils::BitAND(partialResults[1], a + i, partialResults[2] + bitNumber - i, bitNumber - i, cloudKey);
+        if(i % 2 == 1)
+            Utils::FullAdderCircuit(result, partialResults[0], partialResults[1], bitNumber, cloudKey);
+        else
+            Utils::FullAdderCircuit(partialResults[0], result, partialResults[1], bitNumber, cloudKey);    
+    }
+    delete_gate_bootstrapping_ciphertext_array(bitNumber, partialResults[0]);
+    delete_gate_bootstrapping_ciphertext_array(bitNumber, partialResults[1]);
+    delete[] partialResults;
+}
+#pragma endregion
+
 #pragma region Comparison circuit
 
 #pragma endregion

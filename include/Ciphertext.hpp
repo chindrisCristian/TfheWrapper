@@ -2,7 +2,7 @@
 
 #include <tfhe/tfhe.h>
 #include <tfhe/tfhe_io.h>
-#include <thread>
+#include <boost/thread.hpp>
 #include <iostream>
 #include "KeyManager.hpp"
 #include "Utils.hpp"
@@ -29,8 +29,14 @@ public:
     Ciphertext operator+(const Ciphertext& obj);
     Ciphertext operator+=(const Ciphertext& obj);
     Ciphertext operator*(const Ciphertext& obj);
+
+    Ciphertext SequentialMultiply(const Ciphertext& obj);
+
     Ciphertext operator=(const Ciphertext& obj) = delete;
     Ciphertext operator=(Ciphertext&& obj);
+
+private:
+    void Encrypt_thread(int thread_ID, int msg, const TFheGateBootstrappingSecretKeySet* secretKey);
 
 };
 

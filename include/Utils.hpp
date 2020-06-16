@@ -19,6 +19,11 @@ public:
     static void MultiplicationCircuit(LweSample* const& result, const LweSample* const& a, const LweSample* const& b, int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey);
 #pragma endregion
 
+    #pragma region Sequential multiplication
+public:
+    static void SequentialMultiplier(LweSample* const& result, const LweSample* const& a, const LweSample* const& b, int bitNumber, const TFheGateBootstrappingCloudKeySet* const& cloudKey);
+    #pragma endregion
+
     #pragma region Comparison circuit
 
     #pragma endregion

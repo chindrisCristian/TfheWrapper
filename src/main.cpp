@@ -1,76 +1,30 @@
-#include <iostream>
-#include <fstream>
-#include <time.h>
-#include "KeyManager.hpp"
-#include "Ciphertext.hpp"
+#include "StressTest.hpp"
+#include "EncryptedArray.hpp"
 
 using namespace std;
 
-void GetInput(const char* const& fileName, int* const& a, int* const& b, int& n)
-{
-    ifstream fin(fileName);
-    fin >> n;
-    for(int i = 0; i < n ;i++)
-    {
-        fin >> *(a + i) >> *(b + i);
-    }
-    fin.close();
-}
-
 int main(int argc, char** argv) {
-    KeyManager& km = KeyManager::GetInstance();
-    if(km.ImportSecretKey("../key.secret"))
-        return 1;
-    Ciphertext c1(32, km.GetCloudKey()), c2(32, km.GetCloudKey());
-    uint32_t value_dec;
-    int a = atoi(argv[1]);
-    int b = atoi(argv[2]);
-    c1.Encrypt(a, km.GetSecretKey());
-    c2.Encrypt(b, km.GetSecretKey());
-    Ciphertext product = c1 * c2;
-    value_dec = product.Decrypt(km.GetSecretKey());
-    cout << value_dec << endl;
-    /*int a[1000], b[1000], n;
-    GetInput(argv[1], a, b, n);
-    KeyManager& km = KeyManager::GetInstance();
-    if(km.ImportSecretKey("../key.secret"))
-        return 1;
-    Ciphertext c1(32, km.GetCloudKey()), c2(32, km.GetCloudKey());
-    uint32_t value_dec;
-    ofstream fout(argv[2]);
-    for(int i = 0; i < n; i++){
-        c1.Encrypt(a[i], km.GetSecretKey());
-        c2.Encrypt(b[i], km.GetSecretKey());
-        Ciphertext product = c1 * c2;
-        value_dec = product.Decrypt(km.GetSecretKey());
-        fout << value_dec << endl;
-    }
-    fout.close();*/
-    /*ofstream fout(argv[1]), fout2(argv[2]);
-    fout << 100 << endl;
-    fout2 << 100 << endl;
-    int a, b;
-    for(int i = 0; i < 100; i++)
-    {
-        a = rand() % 1000;
-        b = rand() % 1000;
-        fout << a << " " << b << endl;
-        fout2 << a * b << endl;
-    }
-    fout.close();
-    fout2.close();*/
-    /*ifstream fin(argv[1]), fin2(argv[2]);
-    int n;
-    fin >> n;
-    int a, b;
-    for(int i = 0; i < n; i++){
-        fin >> a;
-        fin2 >> b;
-        if(a != b){
-            cout << "Eroare la linia " << i + 2;
-            break;
-        }
-    }*/
+    /*int elementCount = atoi(argv[1]);
+    StressTest<uint16_t> st("tests/16_bit/content", "tests/16_bit/encContent", "tests/16_bit/result", "tests/16_bit/encResult", "tests/16_bit/decResult", elementCount);
+    st.RunDefault(OperationType::Multiplication, "../key.secret", "../key.cloud");*/
 
+    KeyManager& km = KeyManager::GetInstance();
+    km.ImportSecretKey("keys/key120.secret");
+
+    Ciphertext<int16_t> enc1(km.GetCloudKey()), enc2(km.GetCloudKey());
+
+    srand(time(NULL));
+
+    int p1 = rand() % (INT8_MAX), p2 = rand() % (INT8_MAX), pr = p1 * p2;
+    enc1.Encrypt(p1, km.GetSecretKey());
+    enc2.Encrypt(p2, km.GetSecretKey());
+
+    Ciphertext<int16_t> enc_res = enc1 * enc2;
+    int dec_p = enc_res.Decrypt(km.GetSecretKey());
+
+    cout << p1 << " * " << p2 << " = " << pr << endl;
+    cout << "Expected result: " << dec_p << endl;
+     
+    //EncryptedArray<int16_t> array(km.GetCloudKey());
     return 0;
 }

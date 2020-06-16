@@ -32,8 +32,16 @@ Ciphertext<T>::~Ciphertext()
 template <typename T>
 void Ciphertext<T>::Encrypt(const T in, const TFheGateBootstrappingSecretKeySet* secretKey)
 {
+    boost::thread threads[_arraySize];
     for(int i = 0; i < _arraySize; i++)
-        bootsSymEncrypt(_encData + i, (in >> i) & 1, secretKey);
+        threads[i] = boost::thread(&Ciphertext<T>::Encrypt_thread, this, i, (in >> i) & 1, secretKey);
+    for(int i = 0; i < _arraySize; i++)
+        threads[i].join();
+}
+
+template <typename T>
+void Ciphertext<T>::Encrypt_thread(int thread_ID, int msg, const TFheGateBootstrappingSecretKeySet* secretKey){
+    bootsSymEncrypt(_encData + thread_ID, msg, secretKey);
 }
 
 template <typename T>
@@ -94,6 +102,13 @@ Ciphertext<T> Ciphertext<T>::operator*(const Ciphertext<T>& obj)
 {
     Ciphertext<T> result(obj._cloudKey);
     Utils::MultiplicationCircuit(result._encData, this->_encData, obj._encData, this->_arraySize, this->_cloudKey);
+    return result;
+}
+
+template <typename T>
+Ciphertext<T> Ciphertext<T>::SequentialMultiply(const Ciphertext<T>& obj){
+    Ciphertext<T> result(obj._cloudKey);
+    Utils::SequentialMultiplier(result._encData, this->_encData, obj._encData, this->_arraySize, this->_cloudKey);
     return result;
 }
 
